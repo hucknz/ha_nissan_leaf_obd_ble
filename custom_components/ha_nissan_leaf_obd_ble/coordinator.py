@@ -122,6 +122,9 @@ class NissanLeafCoordinator(DataUpdateCoordinator):
         """
         stored = await self._store.async_load()
         if stored and isinstance(stored, dict):
+            # Clean up any legacy corrupted odometer reading (e.g. 0 km)
+            if stored.get("odometer") == 0:
+                stored.pop("odometer", None)
             self._cache_data = stored
             _LOGGER.debug(
                 "Loaded %d persisted sensor values for %s",
@@ -186,6 +189,10 @@ class NissanLeafCoordinator(DataUpdateCoordinator):
         else:
             # Car is on and responding
             self.update_interval = timedelta(seconds=self._fast_poll)
+            # Filter out invalid 0 odometer readings from updating cache
+            if new_data.get("odometer") == 0:
+                new_data = dict(new_data)
+                new_data.pop("odometer", None)
             self._cache_data.update(new_data)
             await self._async_save_cache()
             _LOGGER.debug(

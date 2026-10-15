@@ -37,6 +37,8 @@ from bleak.backends.device import BLEDevice
 
 from .elm327 import ELM327, OBDStatus
 from .OBDResponse import OBDResponse
+from .protocols.protocol import Frame, Message
+from .utils import isHex
 
 logger = logging.getLogger(__name__)
 
@@ -290,6 +292,11 @@ class OBD:
         if not messages_data:
             logger.info("KWP2000: No response to data read request")
             return response
+
+        for m in messages_data:
+            if len(m.data) == 0 and (m.raw() == "NO DATA" or m.raw() == "CAN ERROR"):
+                logger.info("KWP2000: Vehicle not responding")
+                return response
         
         logger.info(f"KWP2000: Data response ({len(messages_data)} msgs):")
         for i, msg in enumerate(messages_data):
@@ -311,21 +318,46 @@ class OBD:
         if self.interface is None:
             return OBDResponse()
 
-        lines = await self.interface.read_can_broadcast(cmd.command.decode())
+        can_id_str = cmd.command.decode().strip().upper()
+        lines = await self.interface.read_can_broadcast(can_id_str)
         if not lines:
             response = OBDResponse(cmd)
             response.raw_lines = []
             return response
 
-        messages = self.interface.parse_lines(lines)
-        if not messages:
-            response = OBDResponse(cmd)
-            response.raw_lines = lines
-            return response
+        # In monitor mode (ATH1 is active), ELM outputs lines formatted as:
+        # "<CAN_ID><DATA_BYTES>" or space-separated "<CAN_ID> <D0> <D1> ...".
+        # Passive CAN broadcasts are raw frames, NOT ISO-TP diagnostic frames.
+        # Routing them through CANProtocol fails because byte 0 is not an ISO-TP PCI byte.
+        parsed_messages = []
+        for line in lines:
+            cleaned = line.replace(" ", "").strip()
+            if not isHex(cleaned):
+                continue
 
-        parsed_messages = [m for m in messages if len(m.data) > 0]
+            # Check if this frame matches the requested CAN ID
+            if cleaned.upper().startswith(can_id_str):
+                payload_hex = cleaned[len(can_id_str):]
+            elif len(cleaned) == 16:
+                # 8 data bytes without header echo
+                payload_hex = cleaned
+            else:
+                continue
+
+            try:
+                data_bytes = bytearray.fromhex(payload_hex)
+            except ValueError:
+                continue
+
+            if len(data_bytes) == 8:
+                frame = Frame(line)
+                frame.data = data_bytes
+                msg = Message([frame])
+                msg.data = data_bytes
+                parsed_messages.append(msg)
+
         if not parsed_messages:
-            response = OBDResponse(cmd, messages)
+            response = OBDResponse(cmd)
             response.raw_lines = lines
             return response
 

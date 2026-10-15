@@ -349,6 +349,8 @@ class ELM327:
 
         # Any character returns the adapter to command mode; empty command sends only CR.
         await self.__send(b"")
+        # Restore automatic reception so subsequent ECU queries are not filtered to this CAN ID.
+        await self.__send(b"AT AR")
         return lines
 
     async def read_can_monitor(self, timeout: float = 2.0) -> list[str]:
@@ -363,6 +365,7 @@ class ELM327:
         await self.__write(b"AT MA")
         lines = await self.__read_with_timeout(timeout, stop_on_first_hex_line=False)
         await self.__send(b"")
+        await self.__send(b"AT AR")
         return lines
 
     async def __send(self, cmd, delay=None, end_marker=ELM_PROMPT):

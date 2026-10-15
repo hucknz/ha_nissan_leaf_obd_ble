@@ -278,31 +278,35 @@ def odometer(messages):
     
     if len(d) < 4:
         logger.warning(f"odometer: Insufficient data ({len(d)} bytes)")
-        return {"odometer": 0}
+        return None
+
+    # KWP negative response: 0x7F, requested service, error code.
+    if d[0] == 0x7F:
+        return None
     
+    v = None
     # Detect frame type and extract odometer from correct position
     if len(d) >= 12 and d[0] == 0x61:
         # ISO 15765-4 first frame (0x61 = frame type)
         # Structure: [0x61] [length_byte] [padding...] [odometer @ byte 8]
-        logger.debug(f"odometer: ISO 15765-4 first frame detected")
-        if len(d) >= 12:
-            v = int.from_bytes(d[8:12], byteorder="big", signed=False)
-            logger.debug(f"odometer: Reading from [8:12] = {d[8:12].hex()} = {v} km")
-            return {"odometer": v}
+        logger.debug("odometer: ISO 15765-4 first frame detected")
+        v = int.from_bytes(d[8:12], byteorder="big", signed=False)
+        logger.debug(f"odometer: Reading from [8:12] = {d[8:12].hex()} = {v} km")
     
     # Standard KWP2000 response: [0x60=service] [odometer...]
-    if len(d) >= 5 and d[0] == 0x60:
+    elif len(d) >= 5 and d[0] == 0x60:
         v = int.from_bytes(d[1:5], byteorder="big", signed=False)
         logger.debug(f"odometer: KWP2000 format [1:5] = {d[1:5].hex()} = {v} km")
-        return {"odometer": v}
     
     # Fallback: try reading 4 bytes from start
-    if len(d) >= 4:
+    elif len(d) >= 4:
         v = int.from_bytes(d[0:4], byteorder="big", signed=False)
         logger.debug(f"odometer: Fallback format [0:4] = {d[0:4].hex()} = {v} km")
+
+    if v is not None and 0 < v < 10_000_000:
         return {"odometer": v}
     
-    return {"odometer": 0}
+    return None
 
 
 def tp_fr(messages):
@@ -373,6 +377,10 @@ def odometer_can_broadcast(messages):
     Odometer is a 3-byte big-endian value at payload offset 1-3.
     Verified working on 2016 Nissan Leaf with 87786->87787 transition.
     """
+    if not messages or not messages[0].data or len(messages[0].data) < 4:
+        return None
     d = messages[0].data  # 8-byte raw CAN frame
     v = int.from_bytes(d[1:4], byteorder='big', signed=False)
-    return {"odometer": v}
+    if 0 < v < 10_000_000:
+        return {"odometer": v}
+    return None
