@@ -51,6 +51,7 @@ from .decoders import (
     obc_out_power,
     odometer,
     odometer_can_broadcast,
+    range_can_broadcast,
     plug_state,
     power_switch,
     quick_charges,
@@ -107,6 +108,7 @@ leaf_commands = {
     "range_remaining":       OBDCommand("range_remaining",       "Remaining range (km)",                b"03220e24",    13, range_remaining,        header=b"743",),
     "lbc":                   OBDCommand("lbc",                   "Li-ion battery controller",           b"022101",      53, lbc,                    header=b"79B",),
     "odometer_can":          OBDCommand("odometer_can",         "Total odometer reading (km) from CAN broadcast 0x5C5", b"5C5",         8,  odometer_can_broadcast, can_monitor=True,),
+    "range_can":             OBDCommand("range_can",            "Dash range (km) from CAN broadcast 0x2DE", b"2DE",                  8,  range_can_broadcast,    can_monitor=True,),
 }
 # fmt: on
 

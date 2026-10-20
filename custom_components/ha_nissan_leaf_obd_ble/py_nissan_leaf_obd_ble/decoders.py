@@ -384,3 +384,13 @@ def odometer_can_broadcast(messages):
     if 0 < v < 10_000_000:
         return {"odometer": v}
     return None
+
+
+def range_can_broadcast(messages):
+    """Decode dash range (km) from CAN broadcast 0x2DE: 16-bit big-endian at bytes 6-7, 0.1 km units."""
+    if not messages or not messages[0].data or len(messages[0].data) < 8:
+        return None
+    v = int.from_bytes(messages[0].data[6:8], byteorder="big", signed=False)
+    if v == 0xFFFF:
+        return None
+    return {"range_remaining": v / 10}
