@@ -42,6 +42,13 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+
+def _decode_signed_28bit(raw: int) -> int:
+    """Decode a signed 28-bit value stored in a four-byte field."""
+    raw &= 0x0FFFFFFF
+    return raw - 0x10000000 if raw & 0x08000000 else raw
+
+
 # ---------------------------------------------------------------------------
 # LBC decoders
 # ---------------------------------------------------------------------------
@@ -64,11 +71,8 @@ def _make_lbc_decoder_ze0(nominal_ah: float):
         raw1 = int.from_bytes(d[2:6], byteorder="big", signed=False)
         raw2 = int.from_bytes(d[8:12], byteorder="big", signed=False)
 
-        # Sign-extend the 28-bit current values
-        if raw1 & 0x8000000:
-            raw1 |= -0x100000000
-        if raw2 & 0x8000000:
-            raw2 |= -0x100000000
+        raw1 = _decode_signed_28bit(raw1)
+        raw2 = _decode_signed_28bit(raw2)
 
         current_ah = int.from_bytes(d[34:38], byteorder="big") / 10000
         soh = (current_ah / nominal_ah) * 100 if nominal_ah > 0 else None
@@ -102,11 +106,8 @@ def _lbc_decoder_ze0(messages):
     raw1 = int.from_bytes(d[2:6], byteorder="big", signed=False)
     raw2 = int.from_bytes(d[8:12], byteorder="big", signed=False)
 
-    # Sign-extend the 28-bit current values
-    if raw1 & 0x8000000:
-        raw1 |= -0x100000000
-    if raw2 & 0x8000000:
-        raw2 |= -0x100000000
+    raw1 = _decode_signed_28bit(raw1)
+    raw2 = _decode_signed_28bit(raw2)
 
     return {
         "state_of_charge": int.from_bytes(d[30:34], byteorder="big") / 10000,
@@ -156,10 +157,8 @@ def _make_lbc_decoder_ze1(nominal_ah: float):
         raw1 = int.from_bytes(d[2:6], byteorder="big", signed=False)
         raw2 = int.from_bytes(d[8:12], byteorder="big", signed=False)
 
-        if raw1 & 0x8000000:
-            raw1 |= -0x100000000
-        if raw2 & 0x8000000:
-            raw2 |= -0x100000000
+        raw1 = _decode_signed_28bit(raw1)
+        raw2 = _decode_signed_28bit(raw2)
 
         current_ah = int.from_bytes(d[37:40], byteorder="big") / 10000
         soh = (current_ah / nominal_ah) * 100 if nominal_ah > 0 else None
@@ -194,10 +193,8 @@ def _lbc_decoder_ze1(messages):
     raw1 = int.from_bytes(d[2:6], byteorder="big", signed=False)
     raw2 = int.from_bytes(d[8:12], byteorder="big", signed=False)
 
-    if raw1 & 0x8000000:
-        raw1 |= -0x100000000
-    if raw2 & 0x8000000:
-        raw2 |= -0x100000000
+    raw1 = _decode_signed_28bit(raw1)
+    raw2 = _decode_signed_28bit(raw2)
 
     return {
         "state_of_charge": int.from_bytes(d[33:36], byteorder="big") / 10000,

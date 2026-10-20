@@ -345,6 +345,12 @@ def range_remaining(messages):
     return {"range_remaining": v}
 
 
+def _decode_signed_28bit(raw):
+    """Decode a signed 28-bit value stored in a four-byte field."""
+    raw &= 0x0FFFFFFF
+    return raw - 0x10000000 if raw & 0x08000000 else raw
+
+
 def lbc(messages):
     """Decode LBC message (ZE1 generation, 2018+).
     
@@ -357,10 +363,8 @@ def lbc(messages):
         return None
     hv_battery_current_1 = int.from_bytes(d[2:6], byteorder="big", signed=False)
     hv_battery_current_2 = int.from_bytes(d[8:12], byteorder="big", signed=False)
-    if (hv_battery_current_1 & 0x8000000) == 0x8000000:
-        hv_battery_current_1 = hv_battery_current_1 | -0x100000000
-    if (hv_battery_current_2 & 0x8000000) == 0x8000000:
-        hv_battery_current_2 = hv_battery_current_2 | -0x100000000
+    hv_battery_current_1 = _decode_signed_28bit(hv_battery_current_1)
+    hv_battery_current_2 = _decode_signed_28bit(hv_battery_current_2)
     return {
         "state_of_charge": int.from_bytes(d[33:36]) / 10000,
         "hv_battery_health": int.from_bytes(d[30:32]) / 102.4,
