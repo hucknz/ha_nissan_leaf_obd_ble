@@ -447,7 +447,6 @@ _ALL_SENSORS: dict[str, SensorEntityDescription] = {
         name="State of health",
         native_unit_of_measurement="%",
         suggested_display_precision=1,
-        device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     "hv_battery_health": SensorEntityDescription(
