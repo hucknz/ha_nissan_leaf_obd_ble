@@ -250,6 +250,11 @@ class OBD:
                 logger.info("Vehicle not responding")
                 return response
 
+        # UDS negative response (0x7F <service> <code>): don't decode padded zeros as a reading
+        if messages[0].data[:1] == b"\x7f":
+            logger.info("%s: negative response %s", cmd, messages[0].data.hex())
+            return response
+
         decoded_response = cmd(messages)  # applies command-specific message sizing before decode
         decoded_response.raw_lines = response.raw_lines
         return decoded_response
