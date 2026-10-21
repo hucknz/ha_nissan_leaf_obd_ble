@@ -1,7 +1,7 @@
 {
   "domain": "ha_nissan_leaf_obd_ble",
   "name": "Nissan Leaf OBD BLE",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "codeowners": ["@hucknz"],
   "config_flow": true,
   "dependencies": ["bluetooth_adapters"],
