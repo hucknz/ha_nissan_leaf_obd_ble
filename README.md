@@ -39,25 +39,12 @@ with the following additions:
 
 ## Prerequisites
 
-### Python library
-
-This integration depends on a **forked version** of the upstream Python
-library that adds generation profiles and passive CAN monitoring:
-
-```
-https://github.com/hucknz/py-nissan-leaf-obd-ble
-```
-
-Home Assistant will attempt to install it automatically from the git URL in
-`manifest.json`.  If auto-install fails (some HA setups restrict this), install
-it manually in the HA Python environment:
-
-```bash
-# SSH into your HA host
-pip install "git+https://github.com/hucknz/py-nissan-leaf-obd-ble@main"
-```
-
-Then restart Home Assistant.
+The OBD/ELM327 library (derived from
+[pbutterworth/py-nissan-leaf-obd-ble](https://github.com/pbutterworth/py-nissan-leaf-obd-ble))
+is bundled inside the integration as `py_nissan_leaf_obd_ble/`, so no separate
+package install is needed.  The only external requirement is
+`bleak-retry-connector`, which Home Assistant installs automatically, along
+with the built-in `bluetooth_adapters` dependency.
 
 ---
 
@@ -95,10 +82,11 @@ Then restart Home Assistant.
    | ZE1 — 2018+ | Your Leaf is the second-generation (40 kWh / 62 kWh) |
    | Auto | You're unsure — all sensors enabled, ZE1 decoders used |
 
-5. **Step 3 — BLE UUIDs**: Leave at defaults unless your adapter uses
-   non-standard GATT UUIDs.
-6. Click **Submit**.  HA will create the device and all generation-appropriate
-   sensor entities.
+5. **Step 3 — Battery size**: Select your battery size (24, 30, 40 or 62 kWh).
+   This is used to calculate state of health.
+6. HA will create the device and all generation-appropriate sensor entities.
+   BLE UUIDs use the LeLink2 defaults and can be changed later under
+   **Configure**.
 
 ---
 
@@ -108,44 +96,52 @@ Then restart Home Assistant.
 
 | Entity | Unit | Description |
 |---|---|---|
-| `sensor.nissan_leaf_state_of_charge` | % | Battery charge level |
-| `sensor.nissan_leaf_hv_battery_health` | % | Battery state of health |
-| `sensor.nissan_leaf_hv_battery_capacity` | Ah | Battery capacity |
-| `sensor.nissan_leaf_hv_battery_voltage` | V | HV battery pack voltage |
-| `sensor.nissan_leaf_hv_battery_current_1` | A | Pack current (channel 1) |
-| `sensor.nissan_leaf_hv_battery_current_2` | A | Pack current (channel 2) |
-| `sensor.nissan_leaf_odometer` | km | Total distance travelled |
-| `sensor.nissan_leaf_range_remaining` | km | Estimated remaining range |
-| `sensor.nissan_leaf_speed` | km/h | Vehicle speed |
-| `sensor.nissan_leaf_motor_power` | W | Traction motor power |
-| `sensor.nissan_leaf_gear_position` | — | Park / Reverse / Neutral / Drive / Eco |
-| `sensor.nissan_leaf_charge_mode` | — | Not charging / L1 / L2 / L3 |
-| `sensor.nissan_leaf_plug_state` | — | Not plugged / Partial / Plugged |
-| `sensor.nissan_leaf_rpm` | RPM | Motor speed |
-| `sensor.nissan_leaf_ambient_temp` | °C | Outside air temperature |
-| `sensor.nissan_leaf_bat_12v_voltage` | V | 12V auxiliary battery voltage |
-| `sensor.nissan_leaf_bat_12v_current` | A | 12V auxiliary battery current |
-| `sensor.nissan_leaf_quick_charges` | — | Number of quick (CHAdeMO) charges |
-| `sensor.nissan_leaf_l1_l2_charges` | — | Number of L1/L2 charges |
-| `sensor.nissan_leaf_ac_power` | W | Climate system power |
-| `sensor.nissan_leaf_ac_on` | — | Climate on/off |
-| `sensor.nissan_leaf_estimated_ac_power` | W | Estimated climate draw |
-| `sensor.nissan_leaf_estimated_ptc_power` | W | Estimated PTC heater draw |
-| `sensor.nissan_leaf_aux_power` | W | Auxiliary equipment power |
-| `sensor.nissan_leaf_obc_out_power` | W | On-board charger output |
-| `sensor.nissan_leaf_eco_mode` | — | ECO mode active |
-| `sensor.nissan_leaf_rear_heater` | — | Rear window heater active |
-| `sensor.nissan_leaf_power_switch` | — | Power switch status |
-| `sensor.nissan_leaf_tp_fr` | kPa | Tyre pressure — front right |
-| `sensor.nissan_leaf_tp_fl` | kPa | Tyre pressure — front left |
-| `sensor.nissan_leaf_tp_rr` | kPa | Tyre pressure — rear right |
-| `sensor.nissan_leaf_tp_rl` | kPa | Tyre pressure — rear left |
+Entity IDs are derived from the sensor name prefixed with
+`Nissan Leaf OBD BLE`, e.g. `sensor.nissan_leaf_obd_ble_state_of_charge`.
 
-### ZE1 only
+### All generations
 
-| Entity | Description |
+| Sensor name | Unit | Description |
+|---|---|---|
+| State of charge | % | Battery charge level |
+| State of health | % | Calculated from capacity and the selected battery size |
+| HV battery health index | % | Health index (Hx) reported by the battery controller |
+| HV battery capacity | Ah | Battery capacity |
+| HV battery voltage | V | HV battery pack voltage |
+| HV battery current 1 / 2 | A | Pack current (two channels) |
+| Odometer | km | Total distance travelled |
+| Range remaining | km | Estimated remaining range |
+| Vehicle speed | km/h | Vehicle speed |
+| Traction motor power | W | Traction motor power |
+| Gear position | — | Park / Reverse / Neutral / Drive / Eco |
+| Charging mode | — | Charge mode |
+| Plug state | — | Plug state |
+| Motor RPM | RPM | Motor speed |
+| 12V battery voltage / current | V / A | 12V auxiliary battery |
+| Number of quick charges | — | Quick (CHAdeMO) charge count |
+| Number of L1/L2 charges | — | L1/L2 charge count |
+| AC system power | W | Climate system power |
+| AC on | — | Climate on/off |
+| Estimated AC power | W | Estimated climate draw |
+| Estimated PTC power | W | Estimated PTC heater draw |
+| Auxiliary equipment power | W | Auxiliary equipment power |
+| On-board charger output power | W | On-board charger output |
+| ECO mode | — | ECO mode active |
+| Rear heater | — | Rear heater active |
+| Power switch | — | Power switch status |
+| Tyre pressure (FR / FL / RR / RL) | kPa | Four tyre pressure sensors |
+
+### ZE0 / AZE0 only
+
+| Sensor name | Unit | Description |
+|---|---|---|
+| Battery temperature | °C | Battery temperature |
+
+### ZE1 and Auto only
+
+| Sensor name | Description |
 |---|---|
-| `sensor.nissan_leaf_e_pedal_mode` | e-Pedal mode active |
+| e-Pedal mode | e-Pedal mode active |
 
 ---
 
@@ -165,6 +161,7 @@ After setup, click **Configure** on the integration card to adjust:
 
 | Option | Default | Description |
 |---|---|---|
+| Battery size | 30 kWh | Used to calculate state of health |
 | Fast poll interval | 10 s | Polling rate when the car is on and in range |
 | Slow poll interval | 300 s | Polling rate when in range but car is off |
 | Extra-slow poll interval | 3600 s | Polling rate when out of BLE range |
@@ -211,8 +208,7 @@ logger:
 ## Credits
 
 - [pbutterworth/nissan-leaf-obd-ble](https://github.com/pbutterworth/nissan-leaf-obd-ble) — original integration
-- [pbutterworth/py-nissan-leaf-obd-ble](https://github.com/pbutterworth/py-nissan-leaf-obd-ble) — upstream Python library
-- [hucknz/py-nissan-leaf-obd-ble](https://github.com/hucknz/py-nissan-leaf-obd-ble) — forked library with ZE0 support and generation profiles
+- [pbutterworth/py-nissan-leaf-obd-ble](https://github.com/pbutterworth/py-nissan-leaf-obd-ble) — upstream Python library, bundled here in modified form
 - [HA Community thread](https://community.home-assistant.io/t/custom-component-nissan-leaf-via-lelink-2-elm327-ble/561961)
 
 ## License
