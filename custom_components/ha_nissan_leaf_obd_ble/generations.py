@@ -49,6 +49,14 @@ def _decode_signed_28bit(raw: int) -> int:
     return raw - 0x10000000 if raw & 0x08000000 else raw
 
 
+def _decode_state_of_charge(data: bytes, start: int, end: int) -> float | None:
+    """Decode SoC, treating an all-ones value as unavailable."""
+    raw = int.from_bytes(data[start:end], byteorder="big")
+    if raw == (1 << (8 * (end - start))) - 1:
+        return None
+    return raw / 10000
+
+
 # ---------------------------------------------------------------------------
 # LBC decoders
 # ---------------------------------------------------------------------------
@@ -78,7 +86,7 @@ def _make_lbc_decoder_ze0(nominal_ah: float):
         soh = (current_ah / nominal_ah) * 100 if nominal_ah > 0 else None
 
         return {
-            "state_of_charge": int.from_bytes(d[30:34], byteorder="big") / 10000,
+            "state_of_charge": _decode_state_of_charge(d, 30, 34),
             "hv_battery_health": int.from_bytes(d[28:30], byteorder="big") / 102.4,
             "hv_battery_Ah": current_ah,
             "state_of_health": soh,
@@ -110,7 +118,7 @@ def _lbc_decoder_ze0(messages):
     raw2 = _decode_signed_28bit(raw2)
 
     return {
-        "state_of_charge": int.from_bytes(d[30:34], byteorder="big") / 10000,
+        "state_of_charge": _decode_state_of_charge(d, 30, 34),
         "hv_battery_health": int.from_bytes(d[28:30], byteorder="big") / 102.4,
         "hv_battery_Ah": int.from_bytes(d[34:38], byteorder="big") / 10000,
         "hv_battery_current_1": raw1 / 1024,
@@ -164,7 +172,7 @@ def _make_lbc_decoder_ze1(nominal_ah: float):
         soh = (current_ah / nominal_ah) * 100 if nominal_ah > 0 else None
 
         return {
-            "state_of_charge": int.from_bytes(d[33:36], byteorder="big") / 10000,
+            "state_of_charge": _decode_state_of_charge(d, 33, 36),
             "hv_battery_health": int.from_bytes(d[30:32], byteorder="big") / 102.4,
             "hv_battery_Ah": current_ah,
             "state_of_health": soh,
@@ -197,7 +205,7 @@ def _lbc_decoder_ze1(messages):
     raw2 = _decode_signed_28bit(raw2)
 
     return {
-        "state_of_charge": int.from_bytes(d[33:36], byteorder="big") / 10000,
+        "state_of_charge": _decode_state_of_charge(d, 33, 36),
         "hv_battery_health": int.from_bytes(d[30:32], byteorder="big") / 102.4,
         "hv_battery_Ah": int.from_bytes(d[37:40], byteorder="big") / 10000,
         "hv_battery_current_1": raw1 / 1024,
