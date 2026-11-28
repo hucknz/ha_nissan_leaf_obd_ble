@@ -21,7 +21,7 @@ DEFAULT_CHARACTERISTIC_UUID_READ = "0000ffe1-0000-1000-8000-00805f9b34fb"
 DEFAULT_CHARACTERISTIC_UUID_WRITE = "0000ffe1-0000-1000-8000-00805f9b34fb"
 
 # BLE local names to search for when scanning for adapters
-BLE_LOCAL_NAMES = {"OBDBLE"}
+BLE_LOCAL_NAMES = {"OBDBLE", "Android-Vlink", "Vgate iCar Pro"}
 
 # Generation identifiers
 GENERATION_AUTO = "auto"
